@@ -1,7 +1,10 @@
+using System;
+using System.Diagnostics.Eventing.Reader;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Logging;
 
 namespace AshaAzureFunction
@@ -41,5 +44,42 @@ namespace AshaAzureFunction
                 return new StatusCodeResult(StatusCodes.Status500InternalServerError);
             }
         }
+
+        [Function("TimerTriggerCSharp")]
+        public static void Run([TimerTrigger("0 */5 * * * *")] TimerInfo myTimer, ILogger log)
+        {
+            if (myTimer.IsPastDue)
+            {
+                log.LogInformation("Timer is running late!");
+            }
+            log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
+        }
+
+        [Function("CosmosTrigger")]
+        public static void Run([CosmosDBTrigger(
+            databaseName: "databaseName",
+            containerName: "containerName",
+            Connection = "CosmosDBConnectionSetting",
+            LeaseContainerName = "leases",
+            CreateLeaseContainerIfNotExists = true)]IReadOnlyList<ToDoItem> input, ILogger log)
+        {
+            if (input != null && input.Count > 0)
+            {
+                log.LogInformation("Documents modified " + input.Count);
+                log.LogInformation("First document Id " + input[0].id);
+            }
+        }
+
+        [Function("BlobTrigger")]
+        public static void Run([BlobTrigger("samples-workitems/{name}", Connection = "AzureWebJobsStorage")] Stream myBlob, string name, ILogger log)
+        {
+            log.LogInformation($"C# Blob trigger function Processed blob\n Name:{name} \n Size: {myBlob.Length} Bytes");
+        }
+    }
+
+    public class ToDoItem
+    {
+        public string id { get; set; }
+        public string Description { get; set; }
     }
 }
